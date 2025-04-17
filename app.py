@@ -60,6 +60,7 @@ if name != "":
     st.write(cdf)
     result = io.StringIO()
     cdf.to_csv(result, index=False)
+    result.seek(0)
     st.download_button(
         "Download as CSV",
         data=result.read(),
