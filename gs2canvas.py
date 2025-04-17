@@ -88,7 +88,7 @@ def main():
     parser.add_argument(
         "--name",
         required=True,
-        help="The name of the test to use when importing into Canvas.",
+        help="The name of the assignment or test to use when importing into Canvas.",
     )
     args = parser.parse_args()
     process(db=args.db, gs=args.gs, name=args.name, canvas=args.canvas)
