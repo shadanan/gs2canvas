@@ -1,0 +1,17 @@
+[project]
+name = "gs2canvas"
+version = "0.1.0"
+description = "Convert Google Sheet form responses to Canvas"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pandas>=2.2.3",
+    "rich>=14.0.0",
+]
+
+[project.scripts]
+gs2canvas = "gs2canvas:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
