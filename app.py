@@ -59,7 +59,7 @@ if name != "":
     st.write("## Canvas Formatted Data")
     st.write(cdf)
     result = io.StringIO()
-    cdf.to_csv(result)
+    cdf.to_csv(result, index=False)
     st.download_button(
         "Download as CSV",
         data=result.read(),
