@@ -1,9 +1,23 @@
 import argparse
-from io import TextIOWrapper
+import re
+from io import StringIO
 
 import pandas as pd
 import rich
 from rich.table import Table
+
+STUDENT_DB_COLUMNS = ["SIS Login ID", "Student", "Section"]
+GS_RESPONSE_COLUMNS = ["Email Address", "Score"]
+
+
+def to_kebab_case(text):
+    text = re.sub(
+        r"([A-Z]+)([A-Z][a-z])", r"\1-\2", text
+    )  # Split uppercase followed by uppercase-lowercase
+    text = re.sub(
+        r"([a-z0-9])([A-Z])", r"\1-\2", text
+    )  # Split lowercase/number followed by uppercase
+    return text.lower().replace(" ", "-")  # Lowercase and replace spaces with hyphens
 
 
 def rich_print_df(df, title="DataFrame"):
@@ -15,14 +29,12 @@ def rich_print_df(df, title="DataFrame"):
     rich.print(table)
 
 
-def load_student_db(buf: TextIOWrapper) -> pd.DataFrame:
-    return pd.read_csv(buf, skiprows=[1])[["SIS Login ID", "Student", "Section"]]
+def load_student_db(buf: StringIO) -> pd.DataFrame:
+    return pd.read_csv(buf, skiprows=[1])[STUDENT_DB_COLUMNS]
 
 
-def load_gs_responses(buf: TextIOWrapper) -> pd.DataFrame:
-    df = pd.read_csv(buf).rename(columns={"Email Address": "SIS Login ID"})
-    df = df[["SIS Login ID", "Score", "Your first name", "Your last name"]]
-    return df
+def load_gs_responses(buf: StringIO) -> pd.DataFrame:
+    return pd.read_csv(buf)[GS_RESPONSE_COLUMNS]
 
 
 def convert_score(score):
@@ -31,16 +43,16 @@ def convert_score(score):
 
 def log_unknown_students(sdf: pd.DataFrame, rdf: pd.DataFrame):
     known_students = set(sdf["SIS Login ID"])
-    test_students = set(rdf["SIS Login ID"])
+    test_students = set(rdf["Email Address"])
     unknown_students = test_students - known_students
     if len(unknown_students) > 0:
         rich_print_df(
-            rdf[rdf["SIS Login ID"].isin(unknown_students)], title="Unmapped Students"
+            rdf[rdf["Email Address"].isin(unknown_students)], title="Unmapped Students"
         )
 
 
 def convert(sdf: pd.DataFrame, rdf: pd.DataFrame, name: str) -> pd.DataFrame:
-    cdf = pd.merge(rdf, sdf, on="SIS Login ID")
+    cdf = pd.merge(rdf, sdf, left_on="Email Address", right_on="SIS Login ID")
     cdf[name] = cdf["Score"].apply(lambda score: int(score.split(" / ")[0]))
     cdf = cdf[["Student", "SIS Login ID", "Section", name]]
     header = pd.DataFrame(
@@ -56,7 +68,7 @@ def convert(sdf: pd.DataFrame, rdf: pd.DataFrame, name: str) -> pd.DataFrame:
     return pd.concat([header, cdf]).reset_index(drop=True)
 
 
-def process(*, db: TextIOWrapper, gs: TextIOWrapper, name: str, canvas: TextIOWrapper):
+def process(*, db: StringIO, gs: StringIO, name: str, canvas: StringIO):
     sdf = load_student_db(db)
     rdf = load_gs_responses(gs)
     log_unknown_students(sdf, rdf)
@@ -77,7 +89,7 @@ def main():
         "--gs",
         type=argparse.FileType("r"),
         required=True,
-        help="A file containing the scores (Score) of each student (Email Address), typically exported from Google Sheets.",
+        help="A csv file containing the scores (Score) of each student (Email Address), typically exported from Google Sheets.",
     )
     parser.add_argument(
         "--canvas",
