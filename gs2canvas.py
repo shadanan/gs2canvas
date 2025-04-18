@@ -30,11 +30,19 @@ def rich_print_df(df, title="DataFrame"):
 
 
 def load_student_db(buf: StringIO) -> pd.DataFrame:
-    return pd.read_csv(buf, skiprows=[1])[STUDENT_DB_COLUMNS]
+    sdf = pd.read_csv(buf, skiprows=[1])
+    for col in STUDENT_DB_COLUMNS:
+        if col not in sdf.columns:
+            raise Exception(f"`{col}` is missing")
+    return sdf[STUDENT_DB_COLUMNS]
 
 
 def load_gs_responses(buf: StringIO) -> pd.DataFrame:
-    return pd.read_csv(buf)[GS_RESPONSE_COLUMNS]
+    rdf = pd.read_csv(buf)
+    for col in GS_RESPONSE_COLUMNS:
+        if col not in rdf.columns:
+            raise Exception(f"`{col}` is missing")
+    return rdf[GS_RESPONSE_COLUMNS]
 
 
 def convert_score(score):
