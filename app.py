@@ -8,7 +8,7 @@ import gs2canvas
 
 @st.cache_data
 def convert_for_download(df: pd.DataFrame):
-    return df.to_csv().encode()
+    return df.to_csv(index=False).encode()
 
 
 st.write("""
