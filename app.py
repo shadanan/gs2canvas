@@ -5,6 +5,12 @@ import streamlit as st
 
 import gs2canvas
 
+
+@st.cache_data
+def convert_for_download(df: pd.DataFrame):
+    return df.to_csv().encode()
+
+
 st.write("""
 # gs2canvas
 
@@ -21,13 +27,8 @@ if student_db_file is None:
     st.stop()
 
 buf = io.StringIO(student_db_file.getvalue().decode("utf-8"))
-sdf = pd.read_csv(buf, skiprows=[1])
-for col in gs2canvas.STUDENT_DB_COLUMNS:
-    if col not in sdf.columns:
-        st.error(f"`{col}` is missing in `{student_db_file.name}`")
-        st.stop()
-sdf = sdf[gs2canvas.STUDENT_DB_COLUMNS]
-st.write(sdf)
+sdf = gs2canvas.load_student_db(buf)
+st.dataframe(sdf)
 
 gs_responses_file = st.file_uploader(
     "Google Sheet Responses",
@@ -39,30 +40,22 @@ if gs_responses_file is None:
     st.stop()
 
 buf = io.StringIO(gs_responses_file.getvalue().decode("utf-8"))
-rdf = pd.read_csv(buf)
-for col in gs2canvas.GS_RESPONSE_COLUMNS:
-    if col not in rdf.columns:
-        st.error(f"`{col}` is missing in `{gs_responses_file.name}`")
-        st.stop()
-rdf = rdf[gs2canvas.GS_RESPONSE_COLUMNS]
-st.write(rdf)
+rdf = gs2canvas.load_gs_responses(buf)
+st.dataframe(rdf)
 
 mdf = rdf.merge(sdf, how="left", left_on="Email Address", right_on="SIS Login ID")
 mdf = mdf[mdf["SIS Login ID"].isnull()][gs2canvas.GS_RESPONSE_COLUMNS]
 if len(mdf) > 0:
     st.warning("Some students failed to join:")
-    st.write(mdf)
+    st.dataframe(mdf)
 
 name = st.text_input("Test / Assignment Name")
 if name != "":
     cdf = gs2canvas.convert(sdf, rdf, name)
     st.write("## Canvas Formatted Data")
-    st.write(cdf)
-    result = io.StringIO()
-    cdf.to_csv(result, index=False)
-    result.seek(0)
+    st.dataframe(cdf)
     st.download_button(
         "Download as CSV",
-        data=result.read(),
+        data=convert_for_download(cdf),
         file_name=f"canvas-{gs2canvas.to_kebab_case(name)}-import.csv",
     )
