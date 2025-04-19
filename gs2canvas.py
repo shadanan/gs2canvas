@@ -45,21 +45,22 @@ def load_gs_responses(buf: StringIO) -> pd.DataFrame:
     return rdf[GS_RESPONSE_COLUMNS]
 
 
+def save_canvas_import(df: pd.DataFrame, fp=None):
+    return df.to_csv(fp, index=False)
+
+
 def convert_score(score):
     return f"{int(score.split(' / ')[0])}"
 
 
-def log_unknown_students(sdf: pd.DataFrame, rdf: pd.DataFrame):
-    known_students = set(sdf["SIS Login ID"])
-    test_students = set(rdf["Email Address"])
-    unknown_students = test_students - known_students
-    if len(unknown_students) > 0:
-        rich_print_df(
-            rdf[rdf["Email Address"].isin(unknown_students)], title="Unmapped Students"
-        )
+def compute_missing_students(sdf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame:
+    mdf = rdf.merge(sdf, how="left", left_on="Email Address", right_on="SIS Login ID")
+    return mdf[mdf["SIS Login ID"].isnull()][GS_RESPONSE_COLUMNS]
 
 
-def convert(sdf: pd.DataFrame, rdf: pd.DataFrame, name: str) -> pd.DataFrame:
+def compute_canvas_import(
+    sdf: pd.DataFrame, rdf: pd.DataFrame, name: str
+) -> pd.DataFrame:
     cdf = pd.merge(rdf, sdf, left_on="Email Address", right_on="SIS Login ID")
     cdf[name] = cdf["Score"].apply(lambda score: int(score.split(" / ")[0]))
     cdf = cdf[["Student", "SIS Login ID", "Section", name]]
@@ -79,10 +80,12 @@ def convert(sdf: pd.DataFrame, rdf: pd.DataFrame, name: str) -> pd.DataFrame:
 def process(*, db: StringIO, gs: StringIO, name: str, canvas: StringIO):
     sdf = load_student_db(db)
     rdf = load_gs_responses(gs)
-    log_unknown_students(sdf, rdf)
-    cdf = convert(sdf, rdf, name)
-    rich_print_df(cdf, title="Canvas Data")
-    cdf.to_csv(canvas, index=False)
+    mdf = compute_missing_students(sdf, rdf)
+    if len(mdf) > 0:
+        rich_print_df(mdf, title="Missing Students")
+    cdf = compute_canvas_import(sdf, rdf, name)
+    rich_print_df(cdf, title="Canvas Import")
+    save_canvas_import(cdf, canvas)
 
 
 def main():
