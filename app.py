@@ -43,19 +43,18 @@ buf = io.StringIO(gs_responses_file.getvalue().decode("utf-8"))
 rdf = gs2canvas.load_gs_responses(buf)
 st.dataframe(rdf)
 
-mdf = rdf.merge(sdf, how="left", left_on="Email Address", right_on="SIS Login ID")
-mdf = mdf[mdf["SIS Login ID"].isnull()][gs2canvas.GS_RESPONSE_COLUMNS]
+mdf = gs2canvas.compute_missing_students(sdf, rdf)
 if len(mdf) > 0:
     st.warning("Some students failed to join:")
     st.dataframe(mdf)
 
 name = st.text_input("Test / Assignment Name")
 if name != "":
-    cdf = gs2canvas.convert(sdf, rdf, name)
+    cdf = gs2canvas.compute_canvas_import(sdf, rdf, name)
     st.write("## Canvas Formatted Data")
     st.dataframe(cdf)
     st.download_button(
         "Download as CSV",
-        data=convert_for_download(cdf),
+        data=gs2canvas.save_canvas_import(cdf),
         file_name=f"canvas-{gs2canvas.to_kebab_case(name)}-import.csv",
     )
