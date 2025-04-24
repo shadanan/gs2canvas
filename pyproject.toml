@@ -10,6 +10,7 @@ dependencies = [
     "pytest>=8.3.5",
     "rich>=14.0.0",
     "streamlit>=1.44.1",
+    "streamlit-desktop-app>=0.3.4",
 ]
 
 [project.scripts]
